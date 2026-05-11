@@ -4,12 +4,10 @@
 #define MILESTONE02
 namespace m2
 {
-    // settings
-    constexpr short Q = 9;
-    constexpr int nx = 15;
-    constexpr int ny = 10;
-    constexpr int N = width * length;
-    
+    struct D2Q9;
+    struct StreamingFunctor;
+    struct CollisionFunctor;
+
     void simulate();
 }
 #endif

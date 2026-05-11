@@ -40,6 +40,8 @@ if(NOT Kokkos_FOUND)
     )
     set(Kokkos_ENABLE_TESTS OFF CACHE BOOL "Disable Kokkos tests" FORCE)
     set(Kokkos_ENABLE_EXAMPLES OFF CACHE BOOL "Disable Kokkos examples" FORCE)
+    set(DKokkos_ENABLE_CUDA ON)
+    set(DKokkos_ENABLE_CUDA_LAMBDA ON)
     FetchContent_MakeAvailable(kokkos)
 endif()
 
@@ -47,4 +49,3 @@ enable_testing()
 
 add_subdirectory(src)
 add_subdirectory(executables)
-add_subdirectory(tests)

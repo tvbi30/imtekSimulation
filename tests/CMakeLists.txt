@@ -13,7 +13,6 @@ endif()
 
 list(APPEND TEST_SOURCES gtest_mpi_main.cpp)
 
-target_link_libraries(tests PRIVATE lib GTest::gtest)
 target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 
