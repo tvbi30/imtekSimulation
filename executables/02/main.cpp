@@ -3,7 +3,7 @@
 // mpi
 #include <mpi.h>
 // custom
-#include "milestone02.hpp"
+#include "lbmD2Q9.hpp"
 
 int main(int argc, char** argv)
 {
@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if(rank == 0)
-        m2::simulate();
+        lbm::simulate();
 
     Kokkos::finalize();
     MPI_Finalize();

@@ -10,15 +10,15 @@
 // just a visualization for my brain to better understand the memory layout in the view
     // struct Laticce
     // {
-    //     float f0[nx * ny];
-    //     float f1[nx * ny];
-    //     float f2[nx * ny];
-    //     float f3[nx * ny];
-    //     float f4[nx * ny];
-    //     float f5[nx * ny];
-    //     float f6[nx * ny];
-    //     float f7[nx * ny];
-    //     float f8[nx * ny];
+    //     double f0[nx * ny];
+    //     double f1[nx * ny];
+    //     double f2[nx * ny];
+    //     double f3[nx * ny];
+    //     double f4[nx * ny];
+    //     double f5[nx * ny];
+    //     double f6[nx * ny];
+    //     double f7[nx * ny];
+    //     double f8[nx * ny];
     // };
 
 namespace lbm
@@ -31,28 +31,11 @@ namespace lbm
         static constexpr int ny = 10;
         static constexpr int N = nx * ny;
         static constexpr double omega = 1.0;
-
-        // access functions to the velocites
-        KOKKOS_INLINE_FUNCTION
-        static int cx(int index)
-        {
-            constexpr int vx[Q] = { 0, 1, 0, -1, 0, 1, -1, -1, 1 };
-            return vx[index];
-        }
-
-        KOKKOS_INLINE_FUNCTION
-        static int cy(int index)
-        {
-            constexpr int vy[Q] = { 0, 0, 1, 0, -1, 1, 1, -1, -1 };
-            return vy[index];
-        }
-
-        KOKKOS_INLINE_FUNCTION
-        static double weight(int index)
-        {
-            constexpr double w[Q] = { 4.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/36.0,1.0/36.0,1.0/36.0,1.0/36.0 };
-            return w[index];
-        }
+        static constexpr double gravX = 0.0;
+        static constexpr double gravY = -9.81;
+        static constexpr int cx[Q] = { 0, 1, 0, -1, 0, 1, -1, -1, 1 };
+        static constexpr int cy[Q] = { 0, 0, 1, 0, -1, 1, 1, -1, -1 };
+        static constexpr double w[Q] = { 4.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/36.0,1.0/36.0,1.0/36.0,1.0/36.0 };
     };
 
     struct StreamingFunctor
@@ -71,19 +54,12 @@ namespace lbm
             #pragma unroll
             for(int i = 0; i < D2Q9::Q; ++i)
             {
-                xn = x - D2Q9::cx(i);
-                yn = y - D2Q9::cy(i);
+                xn = x - D2Q9::cx[i];
+                yn = y - D2Q9::cy[i];
 
                 _fOutput(i, x, y) = _fInput(i, xn, yn);
             }
         }
-    };
-
-    struct CurrentCellState
-    {
-        float vx = 0;
-        float vy = 0;
-        float density = 0;
     };
 
     struct CollisionFunctor
@@ -95,65 +71,59 @@ namespace lbm
         CollisionFunctor(GridBuffer _fin, GridBuffer _fout) : _fInput(_fin), _fOutput(_fout) {}
 
         KOKKOS_INLINE_FUNCTION
-        CurrentCellState calcCurrentCellState(const int x, const int y) const
+        void calcCurrentCellState(const int x, const int y, double& rho, double& ux, double& uy) const
         {
-            CurrentCellState state;
-
             #pragma unroll(D2Q9::Q)
             for(int i = 0; i < D2Q9::Q; ++i)
             {
                 // value of current direction:
                 double val = _fInput(i, x, y);
                 // calc velocity
-                state.density += val;
+                rho += val;
                 // calc density
-                state.vx += val * D2Q9::cx(i);
-                state.vy += val * D2Q9::cy(i);
+                ux += val * D2Q9::cx[i];
+                uy += val * D2Q9::cy[i]];
             }
 
-            return state;
+            // dont divide by zero
+            if(rho <= 1e-12) [[unlikely]]
+            {
+                ux = uy = 0;
+                return;
+            }
+
+            ux /= rho;
+            uy /= rho;
         }
 
         KOKKOS_INLINE_FUNCTION
-        float calcEquilibrium()
+        void calcEquilibrium(double (&feq)[D2Q9::Q], const double rho, const double ux, const double uy) const
         {
+            double cu = 0;
+            double uu = ux * ux + uy * uy;
+            
             #pragma unroll(D2Q9::Q)
             for(int i = 0; i < D2Q9::Q; ++i)
             {
-                
+                cu = D2Q9::cx[i] * ux + D2Q9::cy[i] * uy;
+                feq[i] = D2Q9::w[i] * rho * (1.0 + 3 * cu + 4.5 * cu * cu - 1.5 * uu);
             }
         }
 
         KOKKOS_INLINE_FUNCTION
         void operator()(const int x, const int y) const
         {
-            // calculate density and velocties
-            CurrentCellState curr = calcCurrentCellState(x, y);
+            double rho = 0, ux = 0, uy = 0;
+            calcCurrentCellState(x, y, rho, ux, uy);
 
-            // dont divide by zero
-            if(curr.density <= 1e-12) return;
+            double feq[D2Q9::Q] = {0};
+            calcEquilibrium(feq, rho, ux, uy);
 
             // bgk collision
             #pragma unroll(D2Q9::Q)
             for(int i = 0; i < D2Q9::Q; ++i)
-            {
-                // int _cx = D2Q9::cx(i);
-                // int _cy = D2Q9::cy(i);
-
-                // double cu = _cx*ux + _cy*uy;
-                
-                // // equi dist
-                // double feq = D2Q9::weight(i) * rho * (1.0 + 3.0 * cu + 4.5 * cu * cu - 1.5 * u2);
-
-                // // relaxation
-                // _fOutput(i, x, y) = _fInput(i, x, y) - D2Q9::omega * (_fInput(i, x, y) - feq);
-
-                _fOutput(i, x, y) = (1 - D2Q9::omega) * _fInput(i, x, y) + D2Q9::omega * equi;
-                // gravity
-                _fOutput(i, x, y) = curr.density * D2Q9::weight(i) * vec2dot(vel, grav);
-            }
+                _fOutput(i, x, y) = (1 - D2Q9::omega) * _fInput(i, x, y) + D2Q9::omega * feq[i];
         }
-
     };
 
     void simulate()
@@ -166,21 +136,40 @@ namespace lbm
         Kokkos::View<double***, Kokkos::LayoutRight> fn("fn", D2Q9::Q, D2Q9::nx, D2Q9::ny);
 
         // policy to traverse a 2d grid
-        using gridPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>;
+        using GridPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>;
+
+        Kokkos::parallel_for
+        (
+            "init",
+            GridPolicy({0, 0}, {D2Q9::nx, D2Q9::ny}),
+            KOKKOS_LAMBDA(int x, int y)
+            {
+                const double rho = 1.0;
+                const double ux = 0.0, uy = 1.0;
+                const double uu = ux * ux + uy * uy;
+
+                #pragma unroll(D2Q9::Q)
+                for(int i = 0; i < D2Q9::Q; ++i)
+                {
+                    const double cu = D2Q9::cx[i] * ux + D2Q9::cy[i] * uy;
+                    f(i, x, y) = D2Q9::w[i] * rho * (1.0 + 3.0 * cu + 4.5 * cu * cu * 3.0 * uu);
+                }
+            }
+        );
 
         // collison
         Kokkos::parallel_for
         (
             "collision",
-            gridPolicy({0, 0}, {D2Q9::nx, D2Q9::ny}),
-            CollisionFunctor(f)
+            GridPolicy({0, 0}, {D2Q9::nx, D2Q9::ny}),
+            CollisionFunctor(f, fn)
         );
 
         // streaming
         Kokkos::parallel_for
         (
             "streaming",
-            gridPolicy({0, 0}, {D2Q9::nx, D2Q9::ny}),
+            GridPolicy({0, 0}, {D2Q9::nx, D2Q9::ny}),
             StreamingFunctor(f, fn)
         );
 
