@@ -6,7 +6,7 @@ namespace lbm
 {
     struct D2Q9;
     struct StreamingFunctor;
-    struct CollisionFunctor;
+    struct LBMD2Q9Functor;
 
     void simulate();
 }
