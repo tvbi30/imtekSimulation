@@ -15,7 +15,7 @@ if(MPI_CXX_FOUND)
     message(STATUS "MPI found")
 endif()
 
-find_package(Eigen3 5.0.1)
+find_package(Eigen3 5.0.1 CONFIG QUIET)
 if(NOT Eigen3_FOUND)
     include(FetchContent)
     FetchContent_Declare(
@@ -31,7 +31,7 @@ if(NOT Eigen3_FOUND)
     endif()
 endif()
 
-find_package(Kokkos 4.7.03)
+find_package(Kokkos 4.7.03 CONFIG QUIET)
 if(NOT Kokkos_FOUND)
     include(FetchContent)
     FetchContent_Declare(
@@ -40,8 +40,6 @@ if(NOT Kokkos_FOUND)
     )
     set(Kokkos_ENABLE_TESTS OFF CACHE BOOL "Disable Kokkos tests" FORCE)
     set(Kokkos_ENABLE_EXAMPLES OFF CACHE BOOL "Disable Kokkos examples" FORCE)
-    set(DKokkos_ENABLE_CUDA ON)
-    set(DKokkos_ENABLE_CUDA_LAMBDA ON)
     FetchContent_MakeAvailable(kokkos)
 endif()
 

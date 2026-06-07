@@ -15,7 +15,10 @@ int main(int argc, char** argv)
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if(rank == 0)
-        lbm::simulate();
+    {
+        lbm::LBMD2Q9Simulator simulator;
+        simulator.simulate(400);
+    }
 
     Kokkos::finalize();
     MPI_Finalize();
