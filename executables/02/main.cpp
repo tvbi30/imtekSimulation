@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     if(rank == 0)
     {
         lbm::LBMD2Q9Simulator simulator;
-        simulator.simulate(400);
+        simulator.simulate(1000);
     }
 
     Kokkos::finalize();

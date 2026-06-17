@@ -35,25 +35,35 @@ namespace lbm
 
         // in buffer
         Kokkos3DArray _fin;
+        // stream buffer
+        Kokkos3DArray _fstream;
         // out buffer
         Kokkos3DArray _fout;
         // solid elements
         Kokkos2DArray _solids;
+        // density
+        Kokkos2DArray _rho;
+        // velocities x
+        Kokkos2DArray _vx;
+        // velocites y
+        Kokkos2DArray _vy;
 
         KOKKOS_INLINE_FUNCTION
-        void calculateMacros(const int x, const int y, double& rho, double& vx, double& vy) noexcept;
+        void calculateMacros(const int x, const int y) noexcept;
 
         KOKKOS_INLINE_FUNCTION
-        void calculateEquilibrium(const int x, const int y, Kokkos::Array<double, D2Q9::Q>& feq, const double rho, const double vx, const double vy) noexcept;
+        void calculateEquilibrium(const int x, const int y, Kokkos::Array<double, D2Q9::Q>& feq) noexcept;
 
-        void lbmStep(const int x, const int y) noexcept;
+        void lbmStepCombined(const int x, const int y) noexcept;
+        void lbmStepCollide(const int x, const int y) noexcept;
+        void lbmStepStream(const int x, const int y) noexcept;
         void init() noexcept;
 
         void writeFile(Kokkos3DArray data, const int iteration) noexcept;
     public:
         LBMD2Q9Simulator() noexcept;
 
-        void simulate(int iterations = 200) noexcept;
+        void simulate(int iterations = 400) noexcept;
         const Kokkos3DArray getDistribution() const { return _fin; }
     };
 }
